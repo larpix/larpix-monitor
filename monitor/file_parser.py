@@ -8,17 +8,19 @@ from tqdm.autonotebook import tqdm
 
 import larpix.format.rawhdf5format as rh5
 import larpix.format.hdf5format as h5
+import larpix.format.hdf5format_direct as h5_direct
 from larpix.format.pacman_msg_format import parse
 from larpix import PacketCollection
 
 class FileParser(object):
     max_read = 256000
 
-    def __init__(self, temp_dir, sampling, max_msgs, clean_up_interval):
+    def __init__(self, temp_dir, sampling, max_msgs, clean_up_interval, use_numba=False):
         self.sampling = sampling
         self.max_msgs = max_msgs
         self.clean_up_interval = clean_up_interval
         self.temp_dir = temp_dir
+        self.use_numba = use_numba
 
         self._curr_index = defaultdict(int)
         self._last_updated = defaultdict(lambda : time.time())
@@ -55,10 +57,14 @@ class FileParser(object):
 
             rd = rh5.from_rawfile(filename, start=start, end=end)
 
-            pkts = list()
-            for io_group,msg in zip(rd['msg_headers']['io_groups'], rd['msgs']):
-                pkts.extend(parse(msg, io_group=io_group))
-            h5.to_file(self._temp_filename(filename), pkts, workers=2)
+            if self.use_numba:
+                h5_direct.to_file_direct(self._temp_filename(filename),
+                                         rd['msgs'], rd['msg_headers']['io_groups'])
+            else:
+                pkts = list()
+                for io_group,msg in zip(rd['msg_headers']['io_groups'], rd['msgs']):
+                    pkts.extend(parse(msg, io_group=io_group))
+                h5.to_file(self._temp_filename(filename), pkts, workers=2)
 
             self._curr_index[filename] = end
 

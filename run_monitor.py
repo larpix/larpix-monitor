@@ -91,5 +91,8 @@ if __name__ == '__main__':
     parser.add_argument('--plots', nargs='+', type=str, required=False, default=available_plots_matplotlib, help='''
         Plot names to generate (default=%(default)s)
         ''')
+    parser.add_argument('--numba', action='store_true', required=False, default=False, help='''
+        Use Numba-based direct raw-to-packet conversion (experimental)
+    ''')
     args = parser.parse_args()
     main(**vars(args))
